@@ -543,15 +543,15 @@ Tasks:
 
 ## Checklist
 
-- [ ] Create or update `docs/EXTENSIONS.md`.
-- [ ] Document extension file format.
-- [ ] Document `extensions.json` format.
-- [ ] Document API methods.
-- [ ] Document hook list.
-- [ ] Document payload examples.
-- [ ] Document save compatibility.
-- [ ] Document diagnostics.
-- [ ] Document troubleshooting.
+- [x] Create or update `docs/EXTENSIONS.md`.
+- [x] Document extension file format.
+- [x] Document `extensions.json` format.
+- [x] Document API methods.
+- [x] Document hook list.
+- [x] Document payload examples.
+- [x] Document save compatibility.
+- [x] Document diagnostics.
+- [x] Document troubleshooting.
 - [ ] Add `ExtensionAPI.diagnostics.runSmokeTest()`.
 - [ ] Smoke test confirms `ExtensionAPI` exists.
 - [ ] Smoke test confirms `ExtensionLoader` exists.
@@ -568,15 +568,24 @@ Tasks:
 - [ ] Add disabling-extension manual QA checklist.
 - [ ] Add missing-extension manual QA checklist.
 - [ ] Create `docs/EXTENSION_STATUS.md`.
-- [ ] Update this plan with pass notes.
+- [x] Update this plan with pass notes.
 
 ## Pass 6 Notes
 
-- Status: Not started
+- Status: Partial — documentation exists, smoke-test helper and status doc are missing.
 - Files changed:
+  - EXTENSION_CREATION_PLAN.md
 - Manual tests:
+  - Verified `docs/EXTENSIONS.md` exists and covers extension file format, manifest format, API methods, hooks, save compatibility, diagnostics, browser limitations, and troubleshooting.
+  - Verified `ExtensionAPI.diagnostics.runSmokeTest()` is not present in `script/extensions/api.js`.
+  - Verified `docs/EXTENSION_STATUS.md` does not exist.
 - Known risks:
+  - Pass 6 is not complete until a smoke-test helper exists and can validate the API from the browser console.
+  - End-to-end manual QA for Alchemist and Herbalist is still not documented as completed.
 - Blocked / Needs Review:
+  - Implement `ExtensionAPI.diagnostics.runSmokeTest()`.
+  - Create `docs/EXTENSION_STATUS.md`.
+  - Add manual QA checklists/results for Alchemist, Herbalist, disabling an extension, and missing-extension save compatibility.
 
 ---
 
