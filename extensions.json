@@ -17,5 +17,13 @@
       "src":     "script/extensions/herbalist.js",
       "enabled": true
     }
+    ,{
+      "id":      "mayor",
+      "name":    "The Mayor",
+      "author":  "adarkroom contributors",
+      "version": "1.0.0",
+      "src":     "script/extensions/mayor.js",
+      "enabled": true
+    }
   ]
 }

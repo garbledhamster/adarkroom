@@ -303,27 +303,27 @@ Tasks:
 
 ## Checklist
 
-- [ ] Create `script/extensions/mayor.js`.
-- [ ] Add mayor extension to `extensions.json`.
-- [ ] Register extension id `mayor`.
-- [ ] Register extension name `The Mayor`.
-- [ ] Register extension version `1.0.0`.
-- [ ] Add `game.mayor.unlocked` state path.
-- [ ] Mayor does nothing before 6 huts.
-- [ ] Mayor unlocks when 6 huts exist.
-- [ ] Mayor unlock notification fires once.
-- [ ] Add repeating mayor tick.
-- [ ] Mayor tick uses 10 second base delay.
-- [ ] Mayor tick uses `Engine.setInterval` if safe.
-- [ ] Mayor tick logs diagnostics without notification spam.
-- [ ] Update Pass 5 Notes.
+- [x] Create `script/extensions/mayor.js`.
+- [x] Add mayor extension to `extensions.json`.
+- [x] Register extension id `mayor`.
+- [x] Register extension name `The Mayor`.
+- [x] Register extension version `1.0.0`.
+- [x] Add `game.mayor.unlocked` state path.
+- [x] Mayor does nothing before 6 huts.
+- [x] Mayor unlocks when 6 huts exist.
+- [x] Mayor unlock notification fires once.
+- [x] Add repeating mayor tick.
+- [x] Mayor tick uses 10 second base delay.
+- [x] Mayor tick uses `Engine.setInterval` if safe.
+- [x] Mayor tick logs diagnostics without notification spam.
+- [x] Update Pass 5 Notes.
 
 ## Pass 5 Notes
 
-- Status: Not started
-- Files changed:
-- Manual tests:
-- Known risks:
+- Status: Complete
+- Files changed: `script/extensions/mayor.js` (created), `extensions.json` (mayor entry added)
+- Manual tests: Load game, build 6 huts, confirm "the villagers elect a mayor" notification fires once.
+- Known risks: None identified.
 - Blocked / Needs Review:
 
 ---
@@ -352,20 +352,20 @@ Tasks:
 
 ## Checklist
 
-- [ ] Mayor gathers wood only after unlocked.
-- [ ] Mayor adds wood safely.
-- [ ] Mayor starts with +1 wood per tick.
-- [ ] Mayor respects storage/max rules if applicable.
-- [ ] No notification spam.
-- [ ] Debug diagnostics updated if simple.
-- [ ] Update Pass 6 Notes.
+- [x] Mayor gathers wood only after unlocked.
+- [x] Mayor adds wood safely.
+- [x] Mayor starts with +1 wood per tick.
+- [x] Mayor respects storage/max rules if applicable.
+- [x] No notification spam.
+- [x] Debug diagnostics updated if simple.
+- [x] Update Pass 6 Notes.
 
 ## Pass 6 Notes
 
-- Status: Not started
-- Files changed:
-- Manual tests:
-- Known risks:
+- Status: Complete
+- Files changed: `script/extensions/mayor.js` (wood gathering added in `_tick`)
+- Manual tests: Unlock mayor (6 huts), wait 10s, confirm wood increments by 1.  Check no notification fires on gather.  Enable Hyper Mode, confirm tick fires every ~5s.
+- Known risks: Mayor adds wood even before the player has discovered the forest. This is acceptable since unlock requires 6 huts which implies the player has been outside.
 - Blocked / Needs Review:
 
 ---
