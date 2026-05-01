@@ -11,7 +11,7 @@ var ExtensionAPI = (function() {
 
   var _hooks = {};
 
-  return {
+  var api = {
 
     // -----------------------------------------------------------------------
     // State — thin wrappers around $SM so extensions never call $SM directly
@@ -158,7 +158,45 @@ var ExtensionAPI = (function() {
           }
         }
       }
+    },
+
+    // -----------------------------------------------------------------------
+    // Diagnostics — small read-only summary for Pass 1 verification
+    // -----------------------------------------------------------------------
+    diagnostics: {
+      getSummary: function() {
+        var hookCounts = {};
+        for (var event in _hooks) {
+          if (_hooks.hasOwnProperty(event)) {
+            hookCounts[event] = _hooks[event].length;
+          }
+        }
+
+        return {
+          apiPresent: true,
+          loaderPresent: !!window.ExtensionLoader,
+          registeredExtensions: window.ExtensionLoader && ExtensionLoader._registry ? ExtensionLoader._registry.map(function(ext) {
+            return {
+              id: ext.id,
+              name: ext.name || null,
+              version: ext.version || null
+            };
+          }) : [],
+          hookCounts: hookCounts,
+          eventPoolSize: window.Events && Events.EventPool ? Events.EventPool.length : null,
+          craftableCount: window.Room && Room.Craftables ? Object.keys(Room.Craftables).length : null,
+          workerCount: window.Outside && Outside._INCOME ? Object.keys(Outside._INCOME).length : null,
+          weaponCount: window.World && World.Weapons ? Object.keys(World.Weapons).length : null
+        };
+      },
+      print: function() {
+        var summary = api.diagnostics.getSummary();
+        console.log('[ExtensionAPI diagnostics]', summary);
+        return summary;
+      }
     }
 
   };
+
+  return api;
 })();
