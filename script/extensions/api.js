@@ -204,7 +204,7 @@ var ExtensionAPI = (function() {
       },
       /** Returns true if the player currently holds the named perk. */
       has: function(id) {
-        return !!(typeof $SM !== 'undefined' && $SM.hasPerk && $SM.hasPerk(id));
+        return typeof $SM !== 'undefined' && $SM.hasPerk && $SM.hasPerk(id);
       },
       /** Grants the named perk if the player does not already have it. */
       grant: function(id) {
@@ -360,10 +360,12 @@ var ExtensionAPI = (function() {
       },
       off: function(event, fn) {
         if (!_hooks[event]) return;
-        if (typeof fn === 'function') {
+        if (fn === undefined) {
+          _hooks[event] = [];
+        } else if (typeof fn === 'function') {
           _hooks[event] = _hooks[event].filter(function(h) { return h !== fn; });
         } else {
-          _hooks[event] = [];
+          console.warn('[ExtensionAPI] ' + _tag() + ' hooks.off: handler must be a function for event "' + event + '"');
         }
       },
       emit: function(event, payload) {
