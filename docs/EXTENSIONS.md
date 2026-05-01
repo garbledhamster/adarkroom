@@ -41,6 +41,7 @@ Engine.init()
        ├─ inject enabled extension scripts in manifest order
        ├─ call ExtensionLoader.initAll()   (runs each ext.init(ExtensionAPI))
        └─ call callback
+            ├─ ExtensionAPI.hooks.emit('game:init', {})
             ├─ ExtensionAPI.save.validateCompatibility()   (warn on missing addons)
             ├─ ExtensionAPI.save.runMigrations()           (apply pending migrations)
             ├─ ExtensionAPI.save.recordLoadedExtensions()  (update save record)
@@ -218,16 +219,74 @@ Register a new top-level panel/tab.  Requires `def.id`, `def.label`, and
 
 ## Hook Reference
 
-Hooks currently wired in the engine:
+Hooks wired in the engine as of Pass 5:
 
-| Hook         | Emitted When | Payload |
-|--------------|--------------|---------|
-| `game:start` | End of `Engine.init()` after extensions load | `{}` |
-| `room:stoked` | Player stokes the fire | `{}` |
-| `path:step`  | Player moves one tile on the world map | `{ tile }` |
-| `combat:kill` | An enemy is killed in combat | `{ enemy }` |
+### Game Lifecycle
 
-Additional hooks are planned in Pass 5.  See `EXTENSION_CREATION_PLAN.md`.
+| Hook | Emitted When | Payload | Source |
+|------|--------------|---------|--------|
+| `game:init` | Engine fully initialised, before save-compat checks | `{}` | `engine.js` |
+| `game:start` | After save-compat and migrations run; game is ready | `{}` | `engine.js` |
+| `game:save` | `localStorage` save is written | `{}` | `engine.js` |
+| `game:load` | Save data is loaded (or new game started) | `{ isNewGame }` | `engine.js` |
+
+### Room
+
+| Hook | Emitted When | Payload | Source |
+|------|--------------|---------|--------|
+| `room:stoked` | Player manually stokes the fire | `{ fireTempBefore, fireTempAfter }` | `room.js` |
+| `room:fireChanged` | Fire level changes for any reason (stoke, cool, builder) | `{ value, text }` | `room.js` |
+| `room:temperatureChanged` | Room temperature changes | `{ old, value, text }` | `room.js` |
+
+### Resources
+
+| Hook | Emitted When | Payload | Source |
+|------|--------------|---------|--------|
+| `resource:changed` | Any `stores.*` key is updated via the State Manager | `{ path, value }` | `engine.js` |
+| `craft:before` | Before a craftable good/weapon/tool is built | `{ id, type, cost }` | `room.js` |
+| `craft:after` | After a craftable good/weapon/tool is built | `{ id, type }` | `room.js` |
+| `build:before` | Before a building is constructed | `{ id, type, cost }` | `room.js` |
+| `build:after` | After a building is constructed | `{ id, type }` | `room.js` |
+
+### Path / World
+
+| Hook | Emitted When | Payload | Source |
+|------|--------------|---------|--------|
+| `path:embark` | Player leaves the village on an expedition | `{ outfit }` | `path.js` |
+| `path:step` | Player moves one tile on the world map | `{ tile, position }` | `world.js` |
+| `path:returnHome` | Player returns to the village | `{}` | `world.js` |
+| `world:beforeMove` | Immediately before the player's position is updated | `{ direction, from }` | `world.js` |
+| `world:afterMove` | After all move processing (tile narration, supplies, etc.) | `{ tile, position, direction }` | `world.js` |
+| `world:landmarkEntered` | Player steps onto a landmark tile | `{ tile, landmark }` | `world.js` |
+| `world:landmarkCleared` | A landmark dungeon is cleared (becomes an outpost) | `{ tile, position }` | `world.js` |
+
+### Combat
+
+| Hook | Emitted When | Payload | Source |
+|------|--------------|---------|--------|
+| `combat:start` | Combat scene begins | `{ enemy, health }` | `events.js` |
+| `combat:attack` | Player attacks with a weapon | `{ weapon, damage, hit }` | `events.js` |
+| `combat:kill` | Enemy is killed | `{ enemy, loot }` | `events.js` |
+| `combat:end` | Fight ends (win or lose) | `{ won }` | `events.js` |
+| `combat:playerDeath` | Player HP reaches 0 | `{}` | `events.js` |
+
+### Ship & Prestige
+
+| Hook | Emitted When | Payload | Source |
+|------|--------------|---------|--------|
+| `ship:discovered` | Crashed starship is found for the first time | `{}` | `world.js` |
+| `ship:upgraded` | Hull reinforced or engine upgraded | `{ type, value }` | `ship.js` |
+| `ship:launch` | Player lifts off | `{}` | `ship.js` |
+| `prestige:before` | Immediately before prestige data is saved | `{}` | `space.js` |
+| `prestige:after` | Immediately after prestige data is saved | `{}` | `space.js` |
+
+### Unwired Hooks
+
+The following hooks from the Pass 5 plan were intentionally left unwired:
+
+| Hook | Reason |
+|------|--------|
+| `world:tileRevealed` | `uncoverMap()` reveals a radius of tiles atomically; tracking which are *newly* revealed would require diffing the mask before and after, adding noticeable overhead per move. Left unwired pending a lightweight implementation strategy. |
 
 ---
 

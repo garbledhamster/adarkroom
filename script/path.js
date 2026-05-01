@@ -325,6 +325,9 @@ var Path = {
 		for(var k in Path.outfit) {
 			$SM.add('stores["'+k+'"]', -Path.outfit[k]);
 		}
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('path:embark', { outfit: Path.outfit });
+		}
 		World.onArrival();
 		$('#outerSlider').animate({left: '-700px'}, 300);
 		Engine.activeModule = World;

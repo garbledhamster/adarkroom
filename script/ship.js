@@ -113,6 +113,12 @@ var Ship = {
 		}
 		$('#hullRow .row_val', Ship.panel).text($SM.get('game.spaceShip.hull'));
 		AudioEngine.playSound(AudioLibrary.REINFORCE_HULL);
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('ship:upgraded', {
+				type: 'hull',
+				value: $SM.get('game.spaceShip.hull')
+			});
+		}
 	},
 	
 	upgradeEngine: function() {
@@ -124,6 +130,12 @@ var Ship = {
 		$SM.add('game.spaceShip.thrusters', 1);
 		$('#engineRow .row_val', Ship.panel).text($SM.get('game.spaceShip.thrusters'));
 		AudioEngine.playSound(AudioLibrary.UPGRADE_ENGINE);
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('ship:upgraded', {
+				type: 'engine',
+				value: $SM.get('game.spaceShip.thrusters')
+			});
+		}
 	},
 	
 	getMaxHull: function() {
@@ -165,6 +177,9 @@ var Ship = {
 	},
 	
 	liftOff: function () {
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('ship:launch', {});
+		}
 		$('#outerSlider').animate({top: '700px'}, 300);
 		Space.onArrival();
 		Engine.activeModule = Space;

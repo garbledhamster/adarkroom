@@ -730,6 +730,12 @@ var Room = {
 		if (Engine.activeModule == Room) {
 			Room.setMusic();
 		}
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('room:fireChanged', {
+				value: $SM.get('game.fire.value'),
+				text: Room.FireEnum.fromInt($SM.get('game.fire.value')).text
+			});
+		}
 	},
 
 	coolFire: function () {
@@ -759,6 +765,13 @@ var Room = {
 		}
 		if ($SM.get('game.temperature.value') != old) {
 			Room.changed = true;
+			if (window.ExtensionAPI) {
+				ExtensionAPI.hooks.emit('room:temperatureChanged', {
+					old: old,
+					value: $SM.get('game.temperature.value'),
+					text: Room.TempEnum.fromInt($SM.get('game.temperature.value')).text
+				});
+			}
 		}
 		Room._tempTimer = Engine.setTimeout(Room.adjustTemp, Room._ROOM_WARM_DELAY);
 	},
@@ -1044,6 +1057,18 @@ var Room = {
 				storeMod[k] = have - cost[k];
 			}
 		}
+
+		var isBuilding = craftable.type === 'building';
+		if (window.ExtensionAPI) {
+			var costCopy = {};
+			for (var ck in cost) { costCopy[ck] = cost[ck]; }
+			ExtensionAPI.hooks.emit(isBuilding ? 'build:before' : 'craft:before', {
+				id: thing,
+				type: craftable.type,
+				cost: costCopy
+			});
+		}
+
 		$SM.setM('stores', storeMod);
 
 		Notifications.notify(Room, craftable.buildMsg);
@@ -1058,6 +1083,13 @@ var Room = {
 			case 'building':
 				$SM.add('game.buildings["' + thing + '"]', 1);
 				break;
+		}
+
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit(isBuilding ? 'build:after' : 'craft:after', {
+				id: thing,
+				type: craftable.type
+			});
 		}
 
 		// audio
