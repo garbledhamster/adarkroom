@@ -19,30 +19,18 @@
     name: 'The Mayor',
     version: '1.0.0',
 
-    // Base tick delay in ms.  Morale multiplier and Hyper Mode both modify
-    // the final interval: effectiveDelay = BASE_TICK * moraleMultiplier,
-    // then Engine.setInterval halves that when Hyper Mode is active.
     _BASE_TICK: 10000,
-
-    // Internal counters (reset on page load; not persisted).
     _tickCount: 0,
     _woodGathered: 0,
-    // Check traps every 9 mayor ticks at neutral morale (~90 s), matching
-    // the vanilla _TRAPS_DELAY cooldown.
     _trapCheckCounter: 0,
     _TRAP_CHECK_EVERY: 9,
-
-    // Native interval ID returned by Engine.setInterval; kept so we can
-    // clear it before restarting with a new morale-adjusted delay.
     _intervalId: null,
-
-    // Stored reference to the ExtensionAPI passed during init.
     _API: null,
+    _lastError: null,
 
     init: function(API) {
       Mayor._API = API;
 
-      // Initialise mayor state so existing saves are not disturbed.
       if (typeof API.state.get('game.mayor') === 'undefined') {
         API.state.set('game.mayor', {});
       }
@@ -50,10 +38,9 @@
         API.state.set('game.mayor.unlocked', false);
       }
 
-      // Start the repeating mayor tick (uses morale multiplier if available).
+      Mayor._exposeDebug();
       Mayor._restartInterval();
 
-      // When morale changes, restart the interval with the updated delay.
       if (API.hooks) {
         API.hooks.on('morale:changed', function() {
           Mayor._restartInterval();
@@ -61,11 +48,50 @@
       }
     },
 
-    /**
-     * (Re-)start the mayor tick interval using the current morale delay.
-     * Clears any existing interval first so we never have duplicates.
-     * Engine.setInterval halves the delay when Hyper Mode is active.
-     */
+    _exposeDebug: function() {
+      window.MayorDebug = {
+        status: function() {
+          return Mayor._status();
+        },
+        tick: function() {
+          Mayor._tick();
+          return Mayor._status();
+        },
+        restart: function() {
+          Mayor._restartInterval();
+          return Mayor._status();
+        },
+        unlock: function() {
+          if (Mayor._API) {
+            Mayor._API.state.set('game.mayor.unlocked', true);
+          }
+          return Mayor._status();
+        }
+      };
+    },
+
+    _status: function() {
+      var API = Mayor._API;
+      return {
+        apiReady: !!API,
+        intervalId: Mayor._intervalId,
+        huts: API ? API.state.get('game.buildings["hut"]', true) : null,
+        unlocked: API ? API.state.get('game.mayor.unlocked') : null,
+        mayorState: API ? API.state.get('game.mayor') : null,
+        wood: API ? API.state.get('stores.wood', true) : null,
+        fireValue: (window.$SM ? $SM.get('game.fire.value', true) : null),
+        traps: API ? API.state.get('game.buildings["trap"]', true) : null,
+        tickCount: Mayor._tickCount,
+        woodGathered: Mayor._woodGathered,
+        trapCheckCounter: Mayor._trapCheckCounter,
+        baseTickMs: Mayor._BASE_TICK,
+        moraleMultiplier: (window.ExtensionAPI && ExtensionAPI.morale)
+          ? ExtensionAPI.morale.getDelayMultiplier()
+          : 1.0,
+        lastError: Mayor._lastError
+      };
+    },
+
     _restartInterval: function() {
       if (Mayor._intervalId !== null) {
         clearInterval(Mayor._intervalId);
@@ -78,65 +104,49 @@
       Mayor._intervalId = Engine.setInterval(function() {
         Mayor._tick();
       }, delay);
-      Engine.log('[Mayor] interval started: base=' + Mayor._BASE_TICK +
+      console.log('[Mayor] interval started: base=' + Mayor._BASE_TICK +
         ' ms morale\u00d7' + multiplier + ' = ' + delay + 'ms (before hyper)');
     },
 
     _tick: function() {
-      var API = Mayor._API;
-      if (!API) { return; }
+      try {
+        var API = Mayor._API;
+        if (!API) { return; }
 
-      // Check unlock condition: mayor becomes active once 6 huts exist.
-      if (!API.state.get('game.mayor.unlocked')) {
-        var huts = API.state.get('game.buildings["hut"]', true);
-        if (huts >= 6) {
-          API.state.set('game.mayor.unlocked', true);
-          // Notify once.
-          API.notify(_('the villagers elect a mayor to manage the day-to-day chores.'));
-        } else {
-          return;
+        if (!API.state.get('game.mayor.unlocked')) {
+          var huts = API.state.get('game.buildings["hut"]', true);
+          if (huts >= 6) {
+            API.state.set('game.mayor.unlocked', true);
+            API.notify(_('the villagers elect a mayor to manage the day-to-day chores.'));
+          } else {
+            return;
+          }
         }
-      }
 
-      // Mayor is unlocked — run automations.
-      Mayor._tickCount++;
+        Mayor._tickCount++;
 
-      // Pass 6: gather wood.
-      // Add +1 wood per tick.  Engine.MAX_STORE is the hard cap; $SM.add
-      // handles an uninitialised path safely (treats undefined as 0).
-      var wood = API.state.get('stores.wood', true);
-      if (wood < Engine.MAX_STORE) {
-        API.state.add('stores.wood', 1);
-        Mayor._woodGathered++;
-      }
+        var wood = API.state.get('stores.wood', true);
+        if (wood < Engine.MAX_STORE) {
+          API.state.add('stores.wood', 1);
+          Mayor._woodGathered++;
+        }
 
-      // Pass 7: stoke fire when it is below Burning.
-      Mayor._stokeFire();
+        Mayor._stokeFire();
+        Mayor._checkTraps();
 
-      // Pass 8: check traps every _TRAP_CHECK_EVERY ticks.
-      Mayor._checkTraps();
-
-      // Debug diagnostics logged every 10 ticks to avoid console noise.
-      if (Mayor._tickCount % 10 === 0) {
-        Engine.log(
-          '[Mayor] tick ' + Mayor._tickCount +
-          ' | wood gathered: ' + Mayor._woodGathered
-        );
+        if (Mayor._tickCount % 10 === 0) {
+          console.log('[Mayor] tick ' + Mayor._tickCount +
+            ' | wood gathered: ' + Mayor._woodGathered);
+        }
+      } catch (e) {
+        Mayor._lastError = e && e.message ? e.message : String(e);
+        console.error('[Mayor] tick failed', e);
       }
     },
 
-    /**
-     * Stoke the fire by one level if it is below Burning and wood is available.
-     *
-     * Room.stokeFire() is intentionally avoided because it calls
-     * Button.clearCooldown() which depends on live DOM button elements.
-     * Instead we mirror the safe state changes used in Room.coolFire():
-     *   spend 1 wood, raise fire value by 1, call Room.onFireChange().
-     */
     _stokeFire: function() {
       if (!window.Room || !Room.FireEnum) { return; }
       var fireValue = $SM.get('game.fire.value', true);
-      // Only stoke when fire is below Burning (value 3); Burning/Roaring is fine.
       if (fireValue >= Room.FireEnum.Burning.value) { return; }
       var wood = $SM.get('stores.wood', true);
       if (wood <= 0) { return; }
@@ -145,13 +155,6 @@
       Room.onFireChange();
     },
 
-    /**
-     * Check traps quietly every _TRAP_CHECK_EVERY ticks.
-     *
-     * Mirrors the drop logic from Outside.checkTraps() without firing a
-     * per-check notification, avoiding spam when the mayor runs frequently.
-     * Bait is consumed exactly as in the vanilla implementation.
-     */
     _checkTraps: function() {
       Mayor._trapCheckCounter++;
       if (Mayor._trapCheckCounter < Mayor._TRAP_CHECK_EVERY) { return; }
@@ -179,11 +182,10 @@
       drops.bait = -baitUsed;
 
       API.state.addM('stores', drops);
-      Engine.log('[Mayor] checked traps. drops: ' + JSON.stringify(drops));
+      console.log('[Mayor] checked traps. drops: ' + JSON.stringify(drops));
     }
   };
 
-  // Self-register so the loader can call init() at the right time.
   if (window.ExtensionLoader) {
     ExtensionLoader.register(Mayor);
   }
