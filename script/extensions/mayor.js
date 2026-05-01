@@ -1,23 +1,20 @@
 /**
- * Extension: The Mayor  (v1.0.0)
+ * Extension: The Mayor  (v1.1.0)
  *
- * Adds a village mayor who automates day-to-day chores once the village
- * grows large enough (6 huts).  The mayor's tick timing is driven by
- * Engine.setInterval so it automatically benefits from Hyper Mode
- * (doubleTime) when enabled.
+ * Adds a visible, assignable village mayor once 6 huts are built.
  *
- * Pass 5 — Mayor skeleton: unlock detection, repeating tick, diagnostics.
- * Pass 6 — Mayor automation: gather wood (+1 per tick after unlock).
- * Pass 7 — Mayor automation: stoke fire (safe state changes, no UI button).
- * Pass 8 — Mayor automation: check traps quietly every 9 ticks (~90 s).
- * Pass 9 — Mayor tick timing linked to village morale via morale:changed hook.
+ * Design:
+ *   - Mayor is a real village role in the worker list.
+ *   - Assigning a mayor consumes 1 population slot, like other workers.
+ *   - Mayor automation only runs when at least 1 mayor is assigned.
+ *   - Mayor automates chores: gathers wood, stokes fire, checks traps.
  */
 (function() {
 
   var Mayor = {
     id: 'mayor',
     name: 'The Mayor',
-    version: '1.0.0',
+    version: '1.1.0',
 
     _BASE_TICK: 10000,
     _tickCount: 0,
@@ -38,6 +35,14 @@
         API.state.set('game.mayor.unlocked', false);
       }
 
+      // Register as a real assignable worker/role. The stores object is empty
+      // because the mayor's value comes from automation logic, not normal income.
+      API.workers.register('mayor', {
+        name: 'mayor',
+        delay: 10,
+        stores: {}
+      });
+
       Mayor._exposeDebug();
       Mayor._restartInterval();
 
@@ -45,7 +50,14 @@
         API.hooks.on('morale:changed', function() {
           Mayor._restartInterval();
         });
+        API.hooks.on('build:after', function(payload) {
+          if (payload && payload.id === 'hut') {
+            Mayor._checkUnlock(true);
+          }
+        });
       }
+
+      Mayor._checkUnlock(false);
     },
 
     _exposeDebug: function() {
@@ -62,9 +74,7 @@
           return Mayor._status();
         },
         unlock: function() {
-          if (Mayor._API) {
-            Mayor._API.state.set('game.mayor.unlocked', true);
-          }
+          Mayor._unlock(true);
           return Mayor._status();
         }
       };
@@ -77,7 +87,9 @@
         intervalId: Mayor._intervalId,
         huts: API ? API.state.get('game.buildings["hut"]', true) : null,
         unlocked: API ? API.state.get('game.mayor.unlocked') : null,
+        assignedMayors: Mayor._assignedCount(),
         mayorState: API ? API.state.get('game.mayor') : null,
+        workerState: API ? API.state.get('game.workers["mayor"]') : null,
         wood: API ? API.state.get('stores.wood', true) : null,
         fireValue: (window.$SM ? $SM.get('game.fire.value', true) : null),
         traps: API ? API.state.get('game.buildings["trap"]', true) : null,
@@ -90,6 +102,42 @@
           : 1.0,
         lastError: Mayor._lastError
       };
+    },
+
+    _checkUnlock: function(notify) {
+      var API = Mayor._API;
+      if (!API) { return false; }
+      if (API.state.get('game.mayor.unlocked')) { return true; }
+      var huts = API.state.get('game.buildings["hut"]', true);
+      if (huts >= 6) {
+        Mayor._unlock(notify);
+        return true;
+      }
+      return false;
+    },
+
+    _unlock: function(notify) {
+      var API = Mayor._API;
+      if (!API) { return; }
+      API.state.set('game.mayor.unlocked', true);
+      if (typeof API.state.get('game.workers["mayor"]') !== 'number') {
+        API.state.set('game.workers["mayor"]', 0);
+      }
+      if (window.Outside && typeof Outside.updateWorkersView === 'function') {
+        Outside.updateWorkersView();
+      }
+      if (window.Room && typeof Room.updateIncomeView === 'function') {
+        Room.updateIncomeView();
+      }
+      if (notify) {
+        API.notify(_('the villagers can now appoint a mayor.'));
+      }
+    },
+
+    _assignedCount: function() {
+      var API = Mayor._API;
+      if (!API) { return 0; }
+      return API.state.get('game.workers["mayor"]', true) || 0;
     },
 
     _restartInterval: function() {
@@ -113,15 +161,10 @@
         var API = Mayor._API;
         if (!API) { return; }
 
-        if (!API.state.get('game.mayor.unlocked')) {
-          var huts = API.state.get('game.buildings["hut"]', true);
-          if (huts >= 6) {
-            API.state.set('game.mayor.unlocked', true);
-            API.notify(_('the villagers elect a mayor to manage the day-to-day chores.'));
-          } else {
-            return;
-          }
-        }
+        Mayor._checkUnlock(false);
+
+        if (!API.state.get('game.mayor.unlocked')) { return; }
+        if (Mayor._assignedCount() < 1) { return; }
 
         Mayor._tickCount++;
 
