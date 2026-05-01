@@ -252,11 +252,18 @@
 
       setTimeout(notifyAboutSound, 3000);
 
-      // Initialise any registered extensions now that all core systems are ready.
+      // Initialise extensions via manifest now that all core systems are ready.
+      // loadFromManifest() fetches extensions.json, loads any enabled scripts
+      // not already present, calls initAll(), then fires game:start.
       if (window.ExtensionLoader) {
-        ExtensionLoader.initAll();
-      }
-      if (window.ExtensionAPI) {
+        ExtensionLoader.loadFromManifest('extensions.json', function() {
+          if (window.ExtensionAPI) {
+            ExtensionAPI.hooks.emit('game:start', {});
+          }
+        });
+      } else if (window.ExtensionAPI) {
+        // Defensive fallback: emit game:start if ExtensionLoader was not loaded
+        // (e.g. custom build that omits loader.js but keeps api.js).
         ExtensionAPI.hooks.emit('game:start', {});
       }
 

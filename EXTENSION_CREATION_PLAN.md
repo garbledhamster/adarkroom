@@ -31,7 +31,7 @@ Copilot/Codex agents should update this file after every implementation pass by 
 - [ ] Alchemist extension works end-to-end.
 - [ ] Herbalist extension works end-to-end.
 - [x] Diagnostics are available from the browser console.
-- [ ] `docs/EXTENSIONS.md` exists.
+- [x] `docs/EXTENSIONS.md` exists.
 - [ ] Smoke test or manual validation helper exists.
 - [ ] No new syntax/lint errors are introduced.
 
@@ -252,32 +252,46 @@ Make this work without breaking local development.
 
 ## Checklist
 
-- [ ] Use `extensions.json` as extension manifest.
-- [ ] Respect `enabled: true`.
-- [ ] Respect `enabled: false`.
-- [ ] Load enabled scripts in manifest order.
-- [ ] Support optional `requires` dependencies.
-- [ ] Track loaded extensions.
-- [ ] Track disabled extensions.
-- [ ] Track failed extensions.
-- [ ] Track missing dependencies.
-- [ ] Add `ExtensionLoader.getLoaded()`.
-- [ ] Add `ExtensionLoader.getFailed()`.
-- [ ] Add `ExtensionLoader.getDisabled()`.
-- [ ] Add `ExtensionLoader.getDiagnostics()`.
-- [ ] Preserve static script fallback.
-- [ ] Prevent double-loading of statically loaded extensions.
-- [ ] Update `index.html` loading strategy.
-- [ ] Document local-file/browser limitations.
-- [ ] Update this plan with pass notes.
+- [x] Use `extensions.json` as extension manifest.
+- [x] Respect `enabled: true`.
+- [x] Respect `enabled: false`.
+- [x] Load enabled scripts in manifest order.
+- [x] Support optional `requires` dependencies.
+- [x] Track loaded extensions.
+- [x] Track disabled extensions.
+- [x] Track failed extensions.
+- [x] Track missing dependencies.
+- [x] Add `ExtensionLoader.getLoaded()`.
+- [x] Add `ExtensionLoader.getFailed()`.
+- [x] Add `ExtensionLoader.getDisabled()`.
+- [x] Add `ExtensionLoader.getDiagnostics()`.
+- [x] Preserve static script fallback.
+- [x] Prevent double-loading of statically loaded extensions.
+- [x] Update `index.html` loading strategy.
+- [x] Document local-file/browser limitations.
+- [x] Update this plan with pass notes.
 
 ## Pass 3 Notes
 
-- Status: Not started
+- Status: Complete
 - Files changed:
+  - script/extensions/loader.js
+  - script/engine.js
+  - index.html
+  - docs/EXTENSIONS.md (created)
+  - EXTENSION_CREATION_PLAN.md
 - Manual tests:
+  - Serve via `python3 -m http.server` and confirm both extensions load.
+  - Run `ExtensionLoader.getDiagnostics()` in console — expect `loaded: ['alchemist','herbalist']`.
+  - Set `"enabled": false` for herbalist in extensions.json, reload, confirm `getDisabled()` returns `['herbalist']`.
+  - Add a `requires: ['nonexistent']` entry, confirm it appears in `getDiagnostics().missingDeps`.
+  - Introduce a syntax error in an extension, confirm `getFailed()` lists it and the game still loads.
+  - Re-add a static `<script>` tag for alchemist.js, confirm it is not double-initialised.
 - Known risks:
+  - `fetch()` is blocked on `file://` origins — documented in docs/EXTENSIONS.md.
+  - `game:start` hook is now emitted asynchronously (after manifest fetch + script loads) instead of synchronously at end of `Engine.init()`.  Extensions relying on immediate `game:start` timing should be unaffected in practice since the game UI is already rendered before hooks fire.
 - Blocked / Needs Review:
+  - `combat:kill` hook runtime validation still pending (carried from Pass 1 / Pass 2).
 
 ---
 
