@@ -694,6 +694,7 @@ var Room = {
 			Button.clearCooldown($('#stokeButton.button'));
 			return;
 		}
+		var fireTempBefore = $SM.get('game.fire.value');
 		if (wood > 0) {
 			$SM.set('stores.wood', wood - 1);
 		}
@@ -702,6 +703,12 @@ var Room = {
 		}
 		AudioEngine.playSound(AudioLibrary.STOKE_FIRE);
 		Room.onFireChange();
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('room:stoked', {
+				fireTempBefore: fireTempBefore,
+				fireTempAfter: $SM.get('game.fire.value')
+			});
+		}
 	},
 
 	onFireChange: function () {

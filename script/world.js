@@ -384,6 +384,13 @@ var World = {
     var randomFootstep = Math.floor(Math.random() * 5) + 1;
     AudioEngine.playSound(AudioLibrary['FOOTSTEPS_' + randomFootstep]);
 
+    if (window.ExtensionAPI) {
+      ExtensionAPI.hooks.emit('path:step', {
+        tile: World.state.map[World.curPos[0]][World.curPos[1]],
+        position: [World.curPos[0], World.curPos[1]]
+      });
+    }
+
     if(World.checkDanger()) {
       if(World.danger) {
         Notifications.notify(World, _('dangerous to be this far from the village without proper protection'));

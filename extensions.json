@@ -1,0 +1,21 @@
+{
+  "version": "1",
+  "extensions": [
+    {
+      "id":      "alchemist",
+      "name":    "The Alchemist",
+      "author":  "adarkroom contributors",
+      "version": "1.0.0",
+      "src":     "script/extensions/alchemist.js",
+      "enabled": true
+    },
+    {
+      "id":      "herbalist",
+      "name":    "The Herbalist",
+      "author":  "adarkroom contributors",
+      "version": "1.0.0",
+      "src":     "script/extensions/herbalist.js",
+      "enabled": true
+    }
+  ]
+}

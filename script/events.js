@@ -785,6 +785,14 @@ var Events = {
 			}
 			Events.endFight();
 			// AudioEngine.playSound(AudioLibrary.WIN_FIGHT);
+			if (window.ExtensionAPI) {
+				var activeEvent = Events.activeEvent();
+				var scene = activeEvent ? activeEvent.scenes[Events.activeScene] : null;
+				ExtensionAPI.hooks.emit('combat:kill', {
+					enemy: scene ? scene.enemy : null,
+					loot: scene ? scene.loot : null
+				});
+			}
 			$('#enemy').animate({opacity: 0}, 300, 'linear', function() {
 				Engine.setTimeout(function() {
 					var scene = Events.activeEvent().scenes[Events.activeScene];
