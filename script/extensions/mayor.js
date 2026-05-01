@@ -79,7 +79,7 @@
         Mayor._tick();
       }, delay);
       Engine.log('[Mayor] interval started: base=' + Mayor._BASE_TICK +
-        'ms morale\u00d7' + multiplier + ' = ' + delay + 'ms (before hyper)');
+        ' ms morale\u00d7' + multiplier + ' = ' + delay + 'ms (before hyper)');
     },
 
     _tick: function() {
@@ -176,7 +176,7 @@
         }
       }
       var baitUsed = Math.min(numBait, numTraps);
-      drops['bait'] = -(baitUsed);
+      drops.bait = -baitUsed;
 
       API.state.addM('stores', drops);
       Engine.log('[Mayor] checked traps. drops: ' + JSON.stringify(drops));
