@@ -55,7 +55,7 @@ var ExtensionLoader = {
   load: function(url, callback) {
     var s = document.createElement('script');
     s.src = url;
-    s.onload = callback || function(){};
+    if (callback) s.onload = callback;
     s.onerror = function() {
       console.error('[ExtensionLoader] failed to load script: ' + url);
     };
