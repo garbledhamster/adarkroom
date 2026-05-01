@@ -1060,10 +1060,12 @@ var Room = {
 
 		var isBuilding = craftable.type === 'building';
 		if (window.ExtensionAPI) {
+			var costCopy = {};
+			for (var ck in cost) { costCopy[ck] = cost[ck]; }
 			ExtensionAPI.hooks.emit(isBuilding ? 'build:before' : 'craft:before', {
 				id: thing,
 				type: craftable.type,
-				cost: cost
+				cost: costCopy
 			});
 		}
 

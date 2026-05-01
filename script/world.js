@@ -203,14 +203,15 @@ var World = {
 
   clearDungeon: function() {
     Engine.event('progress', 'dungeon cleared');
+    var clearedTile = World.state.map[World.curPos[0]][World.curPos[1]];
+    World.state.map[World.curPos[0]][World.curPos[1]] = World.TILE.OUTPOST;
+    World.drawRoad();
     if (window.ExtensionAPI) {
       ExtensionAPI.hooks.emit('world:landmarkCleared', {
-        tile: World.state.map[World.curPos[0]][World.curPos[1]],
+        tile: clearedTile,
         position: [World.curPos[0], World.curPos[1]]
       });
     }
-    World.state.map[World.curPos[0]][World.curPos[1]] = World.TILE.OUTPOST;
-    World.drawRoad();
   },
 
   drawRoad: function() {
@@ -397,13 +398,15 @@ var World = {
     AudioEngine.playSound(AudioLibrary['FOOTSTEPS_' + randomFootstep]);
 
     if (window.ExtensionAPI) {
+      var currentPosition = [World.curPos[0], World.curPos[1]];
+      var currentTile = World.state.map[World.curPos[0]][World.curPos[1]];
       ExtensionAPI.hooks.emit('path:step', {
-        tile: World.state.map[World.curPos[0]][World.curPos[1]],
-        position: [World.curPos[0], World.curPos[1]]
+        tile: currentTile,
+        position: currentPosition
       });
       ExtensionAPI.hooks.emit('world:afterMove', {
-        tile: World.state.map[World.curPos[0]][World.curPos[1]],
-        position: [World.curPos[0], World.curPos[1]],
+        tile: currentTile,
+        position: currentPosition,
         direction: direction
       });
     }
