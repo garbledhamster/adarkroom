@@ -8,6 +8,9 @@
  *
  * Pass 5 — Mayor skeleton: unlock detection, repeating tick, diagnostics.
  * Pass 6 — Mayor automation: gather wood (+1 per tick after unlock).
+ * Pass 7 — Mayor automation: stoke fire (safe state changes, no UI button).
+ * Pass 8 — Mayor automation: check traps quietly every 9 ticks (~90 s).
+ * Pass 9 — Mayor tick timing linked to village morale via morale:changed hook.
  */
 (function() {
 
@@ -16,9 +19,22 @@
     name: 'The Mayor',
     version: '1.0.0',
 
+    // Base tick delay in ms.  Morale multiplier and Hyper Mode both modify
+    // the final interval: effectiveDelay = BASE_TICK * moraleMultiplier,
+    // then Engine.setInterval halves that when Hyper Mode is active.
+    _BASE_TICK: 10000,
+
     // Internal counters (reset on page load; not persisted).
     _tickCount: 0,
     _woodGathered: 0,
+    // Check traps every 9 mayor ticks at neutral morale (~90 s), matching
+    // the vanilla _TRAPS_DELAY cooldown.
+    _trapCheckCounter: 0,
+    _TRAP_CHECK_EVERY: 9,
+
+    // Native interval ID returned by Engine.setInterval; kept so we can
+    // clear it before restarting with a new morale-adjusted delay.
+    _intervalId: null,
 
     // Stored reference to the ExtensionAPI passed during init.
     _API: null,
@@ -34,13 +50,36 @@
         API.state.set('game.mayor.unlocked', false);
       }
 
-      // Start the repeating mayor tick.
-      // Base interval: 10 seconds.  Engine.setInterval halves this when
-      // Hyper Mode (doubleTime) is active, so the effective delays are:
-      //   normal: 10s    Hyper Mode: 5s
-      Engine.setInterval(function() {
+      // Start the repeating mayor tick (uses morale multiplier if available).
+      Mayor._restartInterval();
+
+      // When morale changes, restart the interval with the updated delay.
+      if (API.hooks) {
+        API.hooks.on('morale:changed', function() {
+          Mayor._restartInterval();
+        });
+      }
+    },
+
+    /**
+     * (Re-)start the mayor tick interval using the current morale delay.
+     * Clears any existing interval first so we never have duplicates.
+     * Engine.setInterval halves the delay when Hyper Mode is active.
+     */
+    _restartInterval: function() {
+      if (Mayor._intervalId !== null) {
+        clearInterval(Mayor._intervalId);
+        Mayor._intervalId = null;
+      }
+      var multiplier = (window.ExtensionAPI && ExtensionAPI.morale)
+        ? ExtensionAPI.morale.getDelayMultiplier()
+        : 1.0;
+      var delay = Mayor._BASE_TICK * multiplier;
+      Mayor._intervalId = Engine.setInterval(function() {
         Mayor._tick();
-      }, 10000);
+      }, delay);
+      Engine.log('[Mayor] interval started: base=' + Mayor._BASE_TICK +
+        ' ms morale\u00d7' + multiplier + ' = ' + delay + 'ms (before hyper)');
     },
 
     _tick: function() {
@@ -71,6 +110,12 @@
         Mayor._woodGathered++;
       }
 
+      // Pass 7: stoke fire when it is below Burning.
+      Mayor._stokeFire();
+
+      // Pass 8: check traps every _TRAP_CHECK_EVERY ticks.
+      Mayor._checkTraps();
+
       // Debug diagnostics logged every 10 ticks to avoid console noise.
       if (Mayor._tickCount % 10 === 0) {
         Engine.log(
@@ -78,6 +123,63 @@
           ' | wood gathered: ' + Mayor._woodGathered
         );
       }
+    },
+
+    /**
+     * Stoke the fire by one level if it is below Burning and wood is available.
+     *
+     * Room.stokeFire() is intentionally avoided because it calls
+     * Button.clearCooldown() which depends on live DOM button elements.
+     * Instead we mirror the safe state changes used in Room.coolFire():
+     *   spend 1 wood, raise fire value by 1, call Room.onFireChange().
+     */
+    _stokeFire: function() {
+      if (!window.Room || !Room.FireEnum) { return; }
+      var fireValue = $SM.get('game.fire.value', true);
+      // Only stoke when fire is below Burning (value 3); Burning/Roaring is fine.
+      if (fireValue >= Room.FireEnum.Burning.value) { return; }
+      var wood = $SM.get('stores.wood', true);
+      if (wood <= 0) { return; }
+      $SM.set('stores.wood', wood - 1);
+      $SM.set('game.fire', Room.FireEnum.fromInt(fireValue + 1));
+      Room.onFireChange();
+    },
+
+    /**
+     * Check traps quietly every _TRAP_CHECK_EVERY ticks.
+     *
+     * Mirrors the drop logic from Outside.checkTraps() without firing a
+     * per-check notification, avoiding spam when the mayor runs frequently.
+     * Bait is consumed exactly as in the vanilla implementation.
+     */
+    _checkTraps: function() {
+      Mayor._trapCheckCounter++;
+      if (Mayor._trapCheckCounter < Mayor._TRAP_CHECK_EVERY) { return; }
+      Mayor._trapCheckCounter = 0;
+
+      var API = Mayor._API;
+      var numTraps = API.state.get('game.buildings["trap"]', true);
+      if (numTraps <= 0) { return; }
+      if (!window.Outside || !Outside.TrapDrops) { return; }
+
+      var drops = {};
+      var numBait = API.state.get('stores.bait', true);
+      var numDrops = numTraps + Math.min(numBait, numTraps);
+      for (var i = 0; i < numDrops; i++) {
+        var roll = Math.random();
+        for (var j in Outside.TrapDrops) {
+          var drop = Outside.TrapDrops[j];
+          if (roll < drop.rollUnder) {
+            drops[drop.name] = (drops[drop.name] || 0) + 1;
+            break;
+          }
+        }
+      }
+      var baitUsed = Math.min(numBait, numTraps);
+      drops.bait = -baitUsed;
+
+      API.state.addM('stores', drops);
+      Engine.log('[Mayor] checked traps. drops: ' + JSON.stringify(drops));
     }
   };
 

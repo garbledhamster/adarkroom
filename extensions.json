@@ -18,6 +18,14 @@
       "enabled": true
     }
     ,{
+      "id":      "morale",
+      "name":    "Village Morale",
+      "author":  "adarkroom contributors",
+      "version": "1.0.0",
+      "src":     "script/extensions/morale.js",
+      "enabled": true
+    }
+    ,{
       "id":      "mayor",
       "name":    "The Mayor",
       "author":  "adarkroom contributors",
