@@ -38,11 +38,18 @@ var ExtensionLoader = {
     this._registry.forEach(function(ext) {
       try {
         if (typeof ext.init === 'function') {
+          if (typeof api._setCurrentExtension === 'function') {
+            api._setCurrentExtension(ext.id);
+          }
           ext.init(api);
           console.log('[ExtensionLoader] initialised: ' + ext.id);
         }
       } catch(e) {
         console.error('[ExtensionLoader] init failed for ' + ext.id, e);
+      } finally {
+        if (typeof api._setCurrentExtension === 'function') {
+          api._setCurrentExtension(null);
+        }
       }
     });
   },

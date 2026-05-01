@@ -58,8 +58,8 @@
         availableMsg: 'the alchemist says she can brew something special.',
         // When an elixir is built / consumed, grant the perk once.
         onBuild: function() {
-          if (!$SM.hasPerk('vitality')) {
-            $SM.addPerk('vitality');
+          if (!API.perks.has('vitality')) {
+            API.perks.grant('vitality');
           }
         }
       });

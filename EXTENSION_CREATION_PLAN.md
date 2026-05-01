@@ -157,51 +157,65 @@ Do not implement manifest loading or save migrations in this pass.
 
 ## Checklist
 
-- [ ] Add `resources.register`.
-- [ ] Add `craftables.register`.
-- [ ] Add `tradeGoods.register`.
-- [ ] Add `workers.register`.
-- [ ] Add `perks.register`.
-- [ ] Add `weapons.register`.
-- [ ] Add `worldTiles.register`.
-- [ ] Add `landmarks.register`.
-- [ ] Add `events.register`.
-- [ ] Add `hooks.on`.
-- [ ] Add `hooks.off`.
-- [ ] Add `hooks.emit`.
-- [ ] Add duplicate ID detection for all registries.
-- [ ] Add validation for resources.
-- [ ] Add validation for craftables.
-- [ ] Add validation for trade goods.
-- [ ] Add validation for workers.
-- [ ] Add validation for perks.
-- [ ] Add validation for weapons.
-- [ ] Add validation for world tiles.
-- [ ] Add validation for landmarks.
-- [ ] Add validation for events.
-- [ ] Wrap extension callbacks in `try/catch`.
-- [ ] Wrap hook callbacks in `try/catch`.
-- [ ] Ensure failed extension code does not crash base game.
-- [ ] Include extension ID in error output where possible.
-- [ ] Register craftables into `Room.Craftables`.
-- [ ] Register trade goods into `Room.TradeGoods`.
-- [ ] Register workers into existing worker/income system.
-- [ ] Register perks into existing perk system.
-- [ ] Register weapons into `World.Weapons`.
-- [ ] Register world tiles into `World.TILE`.
-- [ ] Register landmarks into `World.LANDMARKS`.
-- [ ] Register events into `Events.EventPool` or `Events.Addons`.
-- [ ] Update Alchemist extension to use official API.
-- [ ] Update Herbalist extension to use official API.
-- [ ] Update this plan with pass notes.
+- [x] Add `resources.register`.
+- [x] Add `craftables.register`.
+- [x] Add `tradeGoods.register`.
+- [x] Add `workers.register`.
+- [x] Add `perks.register`.
+- [x] Add `weapons.register`.
+- [x] Add `worldTiles.register`.
+- [x] Add `landmarks.register`.
+- [x] Add `events.register`.
+- [x] Add `hooks.on`.
+- [x] Add `hooks.off`.
+- [x] Add `hooks.emit`.
+- [x] Add duplicate ID detection for all registries.
+- [x] Add validation for resources.
+- [x] Add validation for craftables.
+- [x] Add validation for trade goods.
+- [x] Add validation for workers.
+- [x] Add validation for perks.
+- [x] Add validation for weapons.
+- [x] Add validation for world tiles.
+- [x] Add validation for landmarks.
+- [x] Add validation for events.
+- [x] Wrap extension callbacks in `try/catch`.
+- [x] Wrap hook callbacks in `try/catch`.
+- [x] Ensure failed extension code does not crash base game.
+- [x] Include extension ID in error output where possible.
+- [x] Register craftables into `Room.Craftables`.
+- [x] Register trade goods into `Room.TradeGoods`.
+- [x] Register workers into existing worker/income system.
+- [x] Register perks into existing perk system.
+- [x] Register weapons into `World.Weapons`.
+- [x] Register world tiles into `World.TILE`.
+- [x] Register landmarks into `World.LANDMARKS`.
+- [x] Register events into `Events.EventPool` or `Events.Addons`.
+- [x] Update Alchemist extension to use official API.
+- [x] Update Herbalist extension to use official API.
+- [x] Update this plan with pass notes.
 
 ## Pass 2 Notes
 
-- Status: Not started
+- Status: Complete
 - Files changed:
+  - script/extensions/api.js
+  - script/extensions/loader.js
+  - script/extensions/alchemist.js
+  - script/extensions/herbalist.js
+  - EXTENSION_CREATION_PLAN.md
 - Manual tests:
+  - Confirm `ExtensionAPI.diagnostics.print()` shows new fields (`duplicateAttempts`, `extensionRegisteredIds`, `tradeGoodCount`, `perkCount`)
+  - Register the same craftable ID twice and confirm only first registration sticks and a warning is logged
+  - Omit `def.cost` from a craftable registration and confirm it is rejected with a warning
+  - Confirm alchemist and herbalist still initialise without errors
+  - Confirm perk logic works end-to-end (craft elixir → vitality perk granted, path:step → herbs found with herbalism perk)
 - Known risks:
+  - `resources.register` writes to an internal `_registry` only; there is no core game resource table to inject into yet (addressed in a future pass if needed)
+  - `landmarks.register` writes directly to `World.LANDMARKS`; landmark placement on the map still uses World.init() radius data and is not retroactively re-run for dynamic landmarks
+  - `world.registerTile` is kept as a backward-compatible alias for `worldTiles.register`
 - Blocked / Needs Review:
+  - `combat:kill` hook runtime validation still pending (carried over from Pass 1)
 
 ---
 

@@ -54,8 +54,8 @@
         buildMsg: 'a pungent salve packed into a small clay pot.',
         availableMsg: 'with enough herbs, a healing salve could be prepared.',
         onBuild: function() {
-          if (!$SM.hasPerk('herbalism')) {
-            $SM.addPerk('herbalism');
+          if (!API.perks.has('herbalism')) {
+            API.perks.grant('herbalism');
           }
         }
       });
@@ -100,8 +100,8 @@
             ],
             onLoad: function() {
               API.state.set('game.herbalistMet', true);
-              if (!$SM.hasPerk('herbalism')) {
-                $SM.addPerk('herbalism');
+              if (!API.perks.has('herbalism')) {
+                API.perks.grant('herbalism');
               }
             },
             buttons: {
@@ -136,7 +136,7 @@
       //    to discover wild herbs in the undergrowth.
       // ------------------------------------------------------------------
       API.hooks.on('path:step', function(data) {
-        if ($SM.hasPerk('herbalism') && Math.random() < 0.08) {
+        if (API.perks.has('herbalism') && Math.random() < 0.08) {
           API.state.add('stores["herbs"]', 1);
           API.notify('spotted some useful plants by the trail.');
         }
