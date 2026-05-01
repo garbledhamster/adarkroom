@@ -1,48 +1,38 @@
 /**
- * Extension: The Herbalist  (v1.0.0)
+ * Extension: The Herbalist  (v1.1.0)
  *
- * A wandering herbalist occasionally passes through the village.  She teaches
- * the survivor how to spot wild herbs, leaving behind knowledge of a crude
- * remedy called a "healing salve".  Walking through the wilderness sometimes
- * turns up useful plants.
+ * Adds a visible, assignable herbalist role to the village.
  *
- * What this extension adds
- * ─────────────────────────
- *  • Random event  – "A Wandering Herbalist"
- *      Available after 1 hut is built and the herbalist has not yet visited.
- *      Welcoming her grants herbs and unlocks the "herbalism" perk.
- *
- *  • Craftable     – "healing salve"  (type: tool, requires workshop)
- *      Costs herbs + cloth.  Building one grants the "herbalism" perk if not
- *      already held, reflecting hard-won botanical knowledge.
- *
- *  • Hook          – path:step
- *      While travelling, 8% chance per step to find wild herbs (requires the
- *      "herbalism" perk so the character knows what to look for).
+ * Design:
+ *   - Herbalist appears after the wandering herbalist event.
+ *   - Assigning herbalists consumes population.
+ *   - Herbalists gather herbs through the village worker system.
+ *   - Travel-based herb discovery remains as a bonus mechanic.
  */
 (function() {
 
   var Herbalist = {
     id: 'herbalist',
     name: 'The Herbalist',
-    version: '1.0.0',
+    version: '1.1.0',
 
     init: function(API) {
 
-      // ------------------------------------------------------------------
-      // 1. Register the "herbalism" perk
-      // ------------------------------------------------------------------
       API.perks.register('herbalism', {
         name: 'herbalism',
         desc: 'find herbs while travelling',
         notify: 'learned to spot wild herbs along the path.'
       });
 
-      // ------------------------------------------------------------------
-      // 2. New craftable: healing salve  (requires Workshop)
-      //    Costs: 5 herbs + 2 cloth.
-      //    Grants the herbalism perk on first craft.
-      // ------------------------------------------------------------------
+      // Visible assignable worker role
+      API.workers.register('herbalist', {
+        name: 'herbalist',
+        delay: 10,
+        stores: {
+          'herbs': 1
+        }
+      });
+
       API.craftables.register('healing salve', {
         name: 'healing salve',
         button: null,
@@ -60,10 +50,6 @@
         }
       });
 
-      // ------------------------------------------------------------------
-      // 3. Random event: A Wandering Herbalist
-      //    Available once 1 hut is built and she has not yet visited.
-      // ------------------------------------------------------------------
       API.events.register({
         title: 'A Wandering Herbalist',
         isAvailable: function() {
@@ -95,14 +81,23 @@
           },
           'teach': {
             text: [
-              'she spreads a handful of leaves on the ground and names them one by one.',
-              'the lessons are brief but useful.'
+              'she shows the villagers which plants are useful and which are not.'
             ],
             onLoad: function() {
               API.state.set('game.herbalistMet', true);
               if (!API.perks.has('herbalism')) {
                 API.perks.grant('herbalism');
               }
+              if (typeof API.state.get('game.workers["herbalist"]') !== 'number') {
+                API.state.set('game.workers["herbalist"]', 0);
+              }
+              if (window.Outside && typeof Outside.updateWorkersView === 'function') {
+                Outside.updateWorkersView();
+              }
+              if (window.Room && typeof Room.updateIncomeView === 'function') {
+                Room.updateIncomeView();
+              }
+              API.notify('herbalists can now be assigned in the village.');
             },
             buttons: {
               'leave': { text: 'thank her.', nextScene: 'end' }
@@ -110,8 +105,7 @@
           },
           'trade': {
             text: [
-              'she exchanges a pouch of dried herbs for a small portion of cured meat.',
-              'she waves and disappears into the trees.'
+              'she exchanges herbs for meat and disappears into the trees.'
             ],
             onLoad: function() {
               API.state.set('game.herbalistMet', true);
@@ -130,11 +124,7 @@
         }
       });
 
-      // ------------------------------------------------------------------
-      // 4. Hook: path:step
-      //    Characters with the herbalism perk have an 8% chance per step
-      //    to discover wild herbs in the undergrowth.
-      // ------------------------------------------------------------------
+      // Keep travel herb discovery as bonus flavor
       API.hooks.on('path:step', function(data) {
         if (API.perks.has('herbalism') && Math.random() < 0.08) {
           API.state.add('stores["herbs"]', 1);
@@ -145,7 +135,6 @@
     }
   };
 
-  // Self-register so ExtensionLoader can call init() at the right time.
   if (window.ExtensionLoader) {
     ExtensionLoader.register(Herbalist);
   }
