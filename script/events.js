@@ -57,7 +57,7 @@ var Events = {
 		var scene = Events.activeEvent().scenes[name];
 
 		if(!scene) {
-			Engine.log('ERROR: scene not found: ' + name);
+			Engine.log('ERROR: scene "' + name + '" not found in event "' + Events.activeEvent().title + '"');
 			Events.endEvent();
 			return;
 		}
