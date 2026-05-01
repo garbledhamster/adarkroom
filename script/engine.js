@@ -252,6 +252,14 @@
 
       setTimeout(notifyAboutSound, 3000);
 
+      // Initialise any registered extensions now that all core systems are ready.
+      if (window.ExtensionLoader) {
+        ExtensionLoader.initAll();
+      }
+      if (window.ExtensionAPI) {
+        ExtensionAPI.hooks.emit('game:start', {});
+      }
+
     },
     resumeAudioContext: function () {
       AudioEngine.tryResumingAudioContext();
