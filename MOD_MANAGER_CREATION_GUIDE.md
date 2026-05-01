@@ -112,19 +112,31 @@ Tasks:
 
 ## Checklist
 
-- [ ] Locate existing bottom/menu button creation code.
-- [ ] Identify safest insertion point for `Mods` button.
-- [ ] Identify existing dialog/event UI system.
-- [ ] Decide whether `Events.startEvent()` should be used.
-- [ ] Create `docs/MOD_MANAGER_AUDIT.md`.
-- [ ] Update Pass 1 notes.
+- [x] Locate existing bottom/menu button creation code.
+- [x] Identify safest insertion point for `Mods` button.
+- [x] Identify existing dialog/event UI system.
+- [x] Decide whether `Events.startEvent()` should be used.
+- [x] Create `docs/MOD_MANAGER_AUDIT.md`.
+- [x] Update Pass 1 notes.
 
 ## Pass 1 Notes
 
-- Status: Not started
+- Status: Complete
 - Files changed:
+  - `docs/MOD_MANAGER_AUDIT.md` (created)
+  - `MOD_MANAGER_CREATION_GUIDE.md` (this file — checklist updated)
 - Findings:
-- Blocked / Needs Review:
+  - Menu buttons are all created in `Engine.init()` (`script/engine.js` ~lines 118–201).
+  - Each button is a `<span class="menuBtn">` appended to a `<div class="menu">` fixed at
+    bottom-right of the page; spans float right so the last appended span renders leftmost.
+  - Safest insertion point: append after the `github.` button (i.e. add it last in
+    `Engine.init`), placing `mods.` at the far left of the menu row.
+  - `Events.startEvent()` / `Events.endEvent()` is the idiomatic dialog system and is
+    already used by all three menu-triggered dialogs (`exportImport`, `confirmDelete`,
+    `confirmHyperMode`).
+  - `Events.startEvent()` IS appropriate; the `onLoad` callback in `scenes.start` can
+    inject the dynamic mod list into `#description`.
+- Blocked / Needs Review: None.
 
 ---
 
