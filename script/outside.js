@@ -278,6 +278,10 @@ var Outside = {
 			var workerCount = $SM.get('game.workers["'+k+'"]');
 			var row = $('div#workers_row_' + k.replace(' ', '-'), workers);
 			if(row.length === 0) {
+				if(!Outside._INCOME[k]) {
+					numGatherers -= workerCount;
+					continue;
+				}
 				row = Outside.makeWorkerRow(k, workerCount);
 				
 				var curPrev = null;
@@ -341,8 +345,8 @@ var Outside = {
 	},
 	
 	makeWorkerRow: function(key, num) {
-		name = Outside._INCOME[key].name;
-		if(!name) name = key;
+		var income = Outside._INCOME[key];
+		var name = (income && income.name) ? income.name : key;
 		var row = $('<div>')
 			.attr('key', key)
 			.attr('id', 'workers_row_' + key.replace(' ','-'))
@@ -362,12 +366,13 @@ var Outside = {
 		$('<div>').addClass('clear').appendTo(row);
 		
 		var tooltip = $('<div>').addClass('tooltip bottom right').appendTo(row);
-		var income = Outside._INCOME[key];
-		for(var s in income.stores) {
-			var r = $('<div>').addClass('storeRow');
-			$('<div>').addClass('row_key').text(_(s)).appendTo(r);
-			$('<div>').addClass('row_val').text(Engine.getIncomeMsg(income.stores[s], income.delay)).appendTo(r);
-			r.appendTo(tooltip);
+		if(income) {
+			for(var s in income.stores) {
+				var r = $('<div>').addClass('storeRow');
+				$('<div>').addClass('row_key').text(_(s)).appendTo(r);
+				$('<div>').addClass('row_val').text(Engine.getIncomeMsg(income.stores[s], income.delay)).appendTo(r);
+				r.appendTo(tooltip);
+			}
 		}
 		
 		return row;
