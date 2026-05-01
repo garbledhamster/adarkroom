@@ -56,6 +56,12 @@ var Events = {
 		Events.activeScene = name;
 		var scene = Events.activeEvent().scenes[name];
 
+		if(!scene) {
+			Engine.log('ERROR: scene not found: ' + name);
+			Events.endEvent();
+			return;
+		}
+
 		// onLoad
 		if(scene.onLoad) {
 			scene.onLoad();
