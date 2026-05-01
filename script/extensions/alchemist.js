@@ -1,51 +1,39 @@
 /**
- * Extension: The Alchemist  (v1.0.0)
+ * Extension: The Alchemist  (v1.1.0)
  *
- * Adds a wandering alchemist NPC to the village.  Once she settles she
- * converts herbs into a rare resource called "essence".  Essence can be
- * brewed into elixirs that grant the "vitality" perk.  Killing enemies
- * sometimes yields herbs.
+ * Adds a visible, assignable village alchemist role.
  *
- * Described as the full example in §11.4 of the Game Design Document.
- *
- * To enable: ensure this file is loaded before Engine.init() completes.
+ * Design:
+ *   - Alchemist appears after the wandering alchemist is welcomed.
+ *   - Assigning alchemists consumes population, like other village roles.
+ *   - Alchemists gather teeth as their primary worker output.
+ *   - Essence/elixir/vitality remain as advanced alchemy content.
  */
 (function() {
 
   var Alchemist = {
     id: 'alchemist',
     name: 'The Alchemist',
-    version: '1.0.0',
+    version: '1.1.0',
 
     init: function(API) {
 
-      // ------------------------------------------------------------------
-      // 1. Register the "vitality" perk (unlocked when an elixir is drunk)
-      // ------------------------------------------------------------------
       API.perks.register('vitality', {
         name: 'vitality',
         desc: 'maximum health increased by 5',
         notify: 'a warmth spreads through the body.'
       });
 
-      // ------------------------------------------------------------------
-      // 2. New worker: alchemist
-      //    Appears in the workers panel once game.workers["alchemist"] is set.
-      //    Converts herbs into essence.
-      // ------------------------------------------------------------------
+      // Visible assignable worker role.  Each assigned alchemist consumes one
+      // villager slot and gathers teeth through the normal village income loop.
       API.workers.register('alchemist', {
         name: 'alchemist',
-        delay: 15,
+        delay: 10,
         stores: {
-          'herbs':   -3,
-          'essence':  1
+          'teeth': 1
         }
       });
 
-      // ------------------------------------------------------------------
-      // 3. New craftable: elixir  (requires Workshop)
-      //    Brewed from essence and water; gives the vitality perk on use.
-      // ------------------------------------------------------------------
       API.craftables.register('elixir', {
         name: 'elixir',
         button: null,
@@ -56,7 +44,6 @@
         },
         buildMsg: 'the elixir shimmers with faint light.',
         availableMsg: 'the alchemist says she can brew something special.',
-        // When an elixir is built / consumed, grant the perk once.
         onBuild: function() {
           if (!API.perks.has('vitality')) {
             API.perks.grant('vitality');
@@ -64,11 +51,6 @@
         }
       });
 
-      // ------------------------------------------------------------------
-      // 4. Random event: A Wandering Alchemist
-      //    Available once 3 huts are built and the alchemist has not yet
-      //    visited.
-      // ------------------------------------------------------------------
       API.events.register({
         title: 'A Wandering Alchemist',
         isAvailable: function() {
@@ -95,14 +77,19 @@
             }
           },
           'settle': {
-            text: [ 'she nods and sets up a small corner for her work.' ],
+            text: [ 'she nods and teaches a few villagers what to look for.' ],
             onLoad: function() {
               API.state.set('game.alchemistMet', true);
-              // Add the alchemist to the available workers pool.
               if (typeof API.state.get('game.workers["alchemist"]') !== 'number') {
                 API.state.set('game.workers["alchemist"]', 0);
               }
-              API.notify('the alchemist has joined the village.');
+              if (window.Outside && typeof Outside.updateWorkersView === 'function') {
+                Outside.updateWorkersView();
+              }
+              if (window.Room && typeof Room.updateIncomeView === 'function') {
+                Room.updateIncomeView();
+              }
+              API.notify('alchemists can now be assigned in the village.');
             },
             buttons: {
               'leave': { text: 'leave.', nextScene: 'end' }
@@ -111,9 +98,8 @@
         }
       });
 
-      // ------------------------------------------------------------------
-      // 5. Hook: on combat kill, 15% chance the body yields herbs
-      // ------------------------------------------------------------------
+      // Keep the light combat-herb bonus as flavor, but the actual village role
+      // is now population-based and visible through the worker list.
       API.hooks.on('combat:kill', function(data) {
         if (Math.random() < 0.15) {
           API.state.add('stores["herbs"]', 1);
@@ -124,7 +110,6 @@
     }
   };
 
-  // Self-register so the loader can call init() at the right time.
   if (window.ExtensionLoader) {
     ExtensionLoader.register(Alchemist);
   }
