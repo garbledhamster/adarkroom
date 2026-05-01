@@ -40,7 +40,11 @@ Engine.init()
        ├─ resolve requires dependencies
        ├─ inject enabled extension scripts in manifest order
        ├─ call ExtensionLoader.initAll()   (runs each ext.init(ExtensionAPI))
-       └─ call callback → ExtensionAPI.hooks.emit('game:start', {})
+       └─ call callback
+            ├─ ExtensionAPI.save.validateCompatibility()   (warn on missing addons)
+            ├─ ExtensionAPI.save.runMigrations()           (apply pending migrations)
+            ├─ ExtensionAPI.save.recordLoadedExtensions()  (update save record)
+            └─ ExtensionAPI.hooks.emit('game:start', {})
 ```
 
 ---
@@ -229,15 +233,83 @@ Additional hooks are planned in Pass 5.  See `EXTENSION_CREATION_PLAN.md`.
 
 ## Save Compatibility
 
-Save compatibility for extensions is not yet implemented (planned for Pass 4).
+Extension save compatibility is implemented as of Pass 4.
 
-Currently:
-- Enabled extensions are not recorded in the save file.
-- Disabling an extension after saving does not corrupt the save but may leave
-  orphaned state in the save (e.g. a perk that no longer has a registered
-  definition).
-- Removing an extension and loading an old save will not crash the game; the
-  orphaned state is silently ignored.
+### What is saved
+
+After extensions initialise, the IDs and versions of all loaded extensions are
+written to `game.extensions.enabled` in the save state:
+
+```json
+"game": {
+  "extensions": {
+    "enabled": [
+      { "id": "alchemist", "version": "1.0.0" },
+      { "id": "herbalist", "version": "1.0.0" }
+    ],
+    "migrations": {
+      "alchemist:1.0.0:example-migration": true
+    }
+  }
+}
+```
+
+### Missing extension detection
+
+On every game load, `ExtensionAPI.save.validateCompatibility()` compares the list
+saved in `game.extensions.enabled` against the extensions currently loaded.  If
+any are missing a warning is printed to the browser console:
+
+```
+[ExtensionAPI] save references extension "alchemist" v1.0.0 which is not currently loaded — orphaned state preserved
+```
+
+Orphaned state (stores, perks, map tiles, etc.) is **never deleted**.  The game
+will not crash when a previously-active extension is absent.
+
+### Migration support
+
+An extension can declare a `migrations` array to upgrade save data after a version
+change.  Each entry must have a unique `id` and an `up(API)` function.
+
+To copy a value from an old key to a new one, use `API.state.get` and
+`API.state.set`.  To remove an old key from the save, set it to `0` or an
+appropriate empty value — the base game's `$SM.remove` is not exposed through
+the public API.  If a key simply needs to be zeroed out rather than deleted,
+setting it to `0` is sufficient.
+
+```js
+var MyExtension = {
+  id: 'my-extension',
+  version: '1.1.0',
+  migrations: [
+    {
+      id: 'my-extension:1.1.0:rename-widget',
+      up: function(API) {
+        var old = API.state.get('stores["old-widget"]', true);
+        if (old > 0) {
+          API.state.set('stores["new-widget"]', old);
+          // Zero out the old key so it no longer accumulates.
+          API.state.set('stores["old-widget"]', 0);
+        }
+      }
+    }
+  ],
+  init: function(API) { /* ... */ }
+};
+```
+
+Applied migration IDs are stored under `game.extensions.migrations` and are
+never re-run.
+
+### API surface
+
+| Method | Description |
+|--------|-------------|
+| `ExtensionAPI.save.getMetadata()` | Returns `{ enabled: [{id, version}], migrations: {id: true} }` from the current save. |
+| `ExtensionAPI.save.recordLoadedExtensions()` | Writes the loaded extension list into `game.extensions.enabled`. Called automatically. |
+| `ExtensionAPI.save.validateCompatibility()` | Warns about save-referenced extensions that are not loaded. Returns `{ missing: [] }`. |
+| `ExtensionAPI.save.runMigrations()` | Runs pending migrations for all loaded extensions. Called automatically. |
 
 ---
 
@@ -247,6 +319,14 @@ Currently:
 // Extension API diagnostics (api.js)
 ExtensionAPI.diagnostics.print();
 ExtensionAPI.diagnostics.getSummary();
+// getSummary() now includes:
+//   savedExtensions     — [{id, version}] list recorded in the save
+//   missingExtensions   — entries in the save not currently loaded
+//   appliedMigrations   — array of applied migration IDs
+
+// Save compatibility (api.js)
+ExtensionAPI.save.getMetadata();          // { enabled: [{id,version}], migrations: {} }
+ExtensionAPI.save.validateCompatibility(); // { missing: [{id,version}] }
 
 // Loader diagnostics (loader.js)
 ExtensionLoader.getDiagnostics();  // { loaded, failed, disabled, missingDeps, registered }

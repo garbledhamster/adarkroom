@@ -382,6 +382,105 @@ var ExtensionAPI = (function() {
     },
 
     // -----------------------------------------------------------------------
+    // Save Compatibility — record, validate, and migrate extension state
+    // -----------------------------------------------------------------------
+    save: {
+
+      /**
+       * Returns extension metadata stored in the current save state.
+       * Shape: { enabled: [{id, version}], migrations: {<migration-id>: true} }
+       */
+      getMetadata: function() {
+        if (typeof $SM === 'undefined') {
+          return { enabled: [], migrations: {} };
+        }
+        return {
+          enabled:    ($SM.get('game.extensions.enabled')   || []).slice(),
+          migrations:  $SM.get('game.extensions.migrations') || {}
+        };
+      },
+
+      /**
+       * Write the currently-loaded extension list into the save state so a
+       * future load can detect which extensions were active when the save was
+       * created.  Only successfully initialised extensions are recorded.
+       * Called automatically after initAll(); also safe to call manually.
+       */
+      recordLoadedExtensions: function() {
+        if (typeof $SM === 'undefined' || !window.ExtensionLoader) return;
+        var loadedIds = ExtensionLoader._loaded;
+        var list = ExtensionLoader._registry
+          .filter(function(ext) { return loadedIds.indexOf(ext.id) !== -1; })
+          .map(function(ext) {
+            return { id: ext.id, version: ext.version || null };
+          });
+        $SM.set('game.extensions.enabled', list);
+      },
+
+      /**
+       * Compare the extension list stored in the save against the currently
+       * loaded extensions.  Warns in the console for any that are recorded in
+       * the save but are not loaded now.  Orphaned data (stores, perks, map
+       * tiles, etc.) is preserved — this function never deletes state.
+       * Returns { missing: [{id, version}] }.
+       */
+      validateCompatibility: function() {
+        if (typeof $SM === 'undefined' || !window.ExtensionLoader) {
+          return { missing: [] };
+        }
+        var savedEnabled = $SM.get('game.extensions.enabled');
+        if (!Array.isArray(savedEnabled) || savedEnabled.length === 0) {
+          return { missing: [] };
+        }
+        var loadedIds = ExtensionLoader._loaded;
+        var missing = savedEnabled.filter(function(entry) {
+          return loadedIds.indexOf(entry.id) === -1;
+        });
+        missing.forEach(function(entry) {
+          console.warn(
+            '[ExtensionAPI] save references extension "' + entry.id + '"' +
+            (entry.version ? ' v' + entry.version : '') +
+            ' which is not currently loaded — orphaned state preserved'
+          );
+        });
+        return { missing: missing };
+      },
+
+      /**
+       * Run any pending migrations declared by loaded extensions.
+       *
+       * An extension may optionally expose a `migrations` array of
+       * { id: string, up: function(API) } objects.  Migrations are applied in
+       * array order.  Applied migration IDs are recorded under
+       * game.extensions.migrations so they are never run more than once.
+       */
+      runMigrations: function() {
+        if (typeof $SM === 'undefined' || !window.ExtensionLoader) return;
+        var applied = $SM.get('game.extensions.migrations') || {};
+        var changed = false;
+        ExtensionLoader._registry.forEach(function(ext) {
+          if (!Array.isArray(ext.migrations)) return;
+          ext.migrations.forEach(function(migration) {
+            if (!migration || !migration.id || typeof migration.up !== 'function') return;
+            if (applied[migration.id]) return;
+            try {
+              migration.up(api);
+              applied[migration.id] = true;
+              changed = true;
+              console.log('[ExtensionAPI] migration applied: ' + migration.id);
+            } catch (e) {
+              console.error('[ExtensionAPI] migration failed: ' + migration.id, e);
+            }
+          });
+        });
+        if (changed) {
+          $SM.set('game.extensions.migrations', applied);
+        }
+      }
+
+    },
+
+    // -----------------------------------------------------------------------
     // Diagnostics — small read-only summary for verification
     // -----------------------------------------------------------------------
     diagnostics: {
@@ -392,6 +491,12 @@ var ExtensionAPI = (function() {
             hookCounts[event] = _hooks[event].length;
           }
         }
+
+        var saveMeta = api.save.getMetadata();
+        var loadedIds = window.ExtensionLoader ? ExtensionLoader._loaded : [];
+        var missingExtensions = saveMeta.enabled.filter(function(entry) {
+          return loadedIds.indexOf(entry.id) === -1;
+        });
 
         return {
           apiPresent: true,
@@ -411,7 +516,10 @@ var ExtensionAPI = (function() {
           tradeGoodCount: window.Room && Room.TradeGoods ? Object.keys(Room.TradeGoods).length : null,
           workerCount: window.Outside && Outside._INCOME ? Object.keys(Outside._INCOME).length : null,
           weaponCount: window.World && World.Weapons ? Object.keys(World.Weapons).length : null,
-          perkCount: window.Engine && Engine.Perks ? Object.keys(Engine.Perks).length : null
+          perkCount: window.Engine && Engine.Perks ? Object.keys(Engine.Perks).length : null,
+          savedExtensions: saveMeta.enabled,
+          missingExtensions: missingExtensions,
+          appliedMigrations: Object.keys(saveMeta.migrations)
         };
       },
       print: function() {
