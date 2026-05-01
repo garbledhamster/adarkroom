@@ -436,7 +436,13 @@ var Space = {
 							complete: function() {
 								Engine.GAME_OVER = true;
 								Score.save();
+								if (window.ExtensionAPI) {
+									ExtensionAPI.hooks.emit('prestige:before', {});
+								}
 								Prestige.save();
+								if (window.ExtensionAPI) {
+									ExtensionAPI.hooks.emit('prestige:after', {});
+								}
 								$('#starsContainer').remove();
 								$('#content, #notifications').remove();
 								Space.showExpansionEnding().then(() => {

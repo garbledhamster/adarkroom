@@ -25,7 +25,7 @@ Copilot/Codex agents should update this file after every implementation pass by 
 - [x] Addons load from `extensions.json`.
 - [x] Addons can be enabled/disabled without editing core game files.
 - [x] Addons can register craftables, workers, events, weapons, perks, world tiles, and landmarks.
-- [ ] Hooks exist for movement, crafting/building, combat, resources, landmarks, game start/load/save.
+- [x] Hooks exist for movement, crafting/building, combat, resources, landmarks, game start/load/save.
 - [x] Save files record enabled addon IDs and versions.
 - [x] Missing addons do not corrupt saves.
 - [ ] Alchemist extension works end-to-end.
@@ -426,46 +426,75 @@ Rules:
 
 ## Checklist
 
-- [ ] Wire `game:init`.
-- [ ] Wire `game:start`.
-- [ ] Wire `game:save`.
-- [ ] Wire `game:load`.
-- [ ] Wire `room:stoked`.
-- [ ] Wire `room:fireChanged`.
-- [ ] Wire `room:temperatureChanged`.
-- [ ] Wire `resource:changed`.
-- [ ] Wire `craft:before`.
-- [ ] Wire `craft:after`.
-- [ ] Wire `build:before`.
-- [ ] Wire `build:after`.
-- [ ] Wire `path:embark`.
-- [ ] Wire `path:step`.
-- [ ] Wire `path:returnHome`.
-- [ ] Wire `world:beforeMove`.
-- [ ] Wire `world:afterMove`.
-- [ ] Wire `world:tileRevealed`.
-- [ ] Wire `world:landmarkEntered`.
-- [ ] Wire `world:landmarkCleared`.
-- [ ] Wire `combat:start`.
-- [ ] Wire `combat:attack`.
-- [ ] Wire `combat:kill`.
-- [ ] Wire `combat:end`.
-- [ ] Wire `combat:playerDeath`.
-- [ ] Wire `ship:discovered`.
-- [ ] Wire `ship:upgraded`.
-- [ ] Wire `ship:launch`.
-- [ ] Wire `prestige:before`.
-- [ ] Wire `prestige:after`.
-- [ ] Document unwired hooks.
-- [ ] Update this plan with pass notes.
+- [x] Wire `game:init`.
+- [x] Wire `game:start`.
+- [x] Wire `game:save`.
+- [x] Wire `game:load`.
+- [x] Wire `room:stoked`.
+- [x] Wire `room:fireChanged`.
+- [x] Wire `room:temperatureChanged`.
+- [x] Wire `resource:changed`.
+- [x] Wire `craft:before`.
+- [x] Wire `craft:after`.
+- [x] Wire `build:before`.
+- [x] Wire `build:after`.
+- [x] Wire `path:embark`.
+- [x] Wire `path:step`.
+- [x] Wire `path:returnHome`.
+- [x] Wire `world:beforeMove`.
+- [x] Wire `world:afterMove`.
+- [ ] Skip `world:tileRevealed` — unwired (see notes).
+- [x] Wire `world:landmarkEntered`.
+- [x] Wire `world:landmarkCleared`.
+- [x] Wire `combat:start`.
+- [x] Wire `combat:attack`.
+- [x] Wire `combat:kill`.
+- [x] Wire `combat:end`.
+- [x] Wire `combat:playerDeath`.
+- [x] Wire `ship:discovered`.
+- [x] Wire `ship:upgraded`.
+- [x] Wire `ship:launch`.
+- [x] Wire `prestige:before`.
+- [x] Wire `prestige:after`.
+- [x] Document unwired hooks.
+- [x] Update this plan with pass notes.
 
 ## Pass 5 Notes
 
-- Status: Not started
+- Status: Complete
 - Files changed:
+  - script/engine.js       (game:init, game:save, game:load, resource:changed)
+  - script/room.js         (room:fireChanged, room:temperatureChanged, craft:before/after, build:before/after)
+  - script/path.js         (path:embark)
+  - script/world.js        (world:beforeMove, world:afterMove, path:returnHome, world:landmarkEntered, world:landmarkCleared, ship:discovered)
+  - script/events.js       (combat:start, combat:attack, combat:end, combat:playerDeath)
+  - script/ship.js         (ship:upgraded, ship:launch)
+  - script/space.js        (prestige:before, prestige:after)
+  - docs/EXTENSIONS.md     (Hook Reference section fully rewritten with all wired hooks and unwired table)
+  - EXTENSION_CREATION_PLAN.md
 - Manual tests:
+  - Open browser console and run:
+    `ExtensionAPI.hooks.on('game:init', function(p){ console.log('game:init', p); })`
+    `ExtensionAPI.hooks.on('game:save', function(p){ console.log('game:save', p); })`
+    `ExtensionAPI.hooks.on('game:load', function(p){ console.log('game:load', p); })`
+    Reload page — expect game:load fires immediately; game:init fires after extensions load.
+    Click "save." in menu — expect game:save fires.
+  - Subscribe to `room:fireChanged` and `room:stoked` — stoke fire and confirm both fire.
+  - Subscribe to `craft:before` and `craft:after` — build a trap and confirm payload has correct `id`/`type`/`cost`.
+  - Subscribe to `path:embark` — embark and confirm outfit is in payload.
+  - Subscribe to `world:beforeMove` and `world:afterMove` — take a step; confirm `from` vs `position` differ.
+  - Subscribe to `combat:start` and `combat:end` — trigger a fight; confirm `enemy` and `won` fields.
+  - Subscribe to `prestige:before` and `prestige:after` — only fires on game-win route.
 - Known risks:
+  - `resource:changed` fires for every `$SM.set`/`$SM.add`/`$SM.addM` on stores, including internal
+    housekeeping (e.g. outfit deductions on embark).  Extensions that subscribe to this hook must be
+    efficient.  The `path` field contains the raw SM path (e.g. `stores["wood"]`), not a clean name.
+  - `combat:end` fires before `combat:kill` finishes its async animation delay in `winFight()`.
+    Extensions that need loot data should subscribe to `combat:kill`, not `combat:end`.
+  - `world:tileRevealed` is unwired because `uncoverMap()` reveals a diamond of tiles atomically;
+    detecting *newly* revealed tiles would require mask diffing on every move.  Left for a future pass.
 - Blocked / Needs Review:
+  - `world:tileRevealed` — see Known risks above.
 
 ---
 

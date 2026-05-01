@@ -90,6 +90,12 @@ var Events = {
 		Engine.event('game event', 'combat');
 		Events.fought = false;
 		Events.won = false;
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('combat:start', {
+				enemy: scene.enemy || null,
+				health: scene.health || 0
+			});
+		}
 		var desc = $('#description', Events.eventPanel());
 
 		$('<div>').text(scene.notification).appendTo(desc);
@@ -543,7 +549,15 @@ var Events = {
 			}
 			
 			var attackFn = weapon.type == 'ranged' ? Events.animateRanged : Events.animateMelee;
-			
+
+			if (window.ExtensionAPI) {
+				ExtensionAPI.hooks.emit('combat:attack', {
+					weapon: weaponName,
+					damage: dmg,
+					hit: dmg >= 0
+				});
+			}
+
 			// play variation audio for weapon type
 			var r = Math.floor(Math.random() * 2) + 1;
 			switch (weapon.type) {
@@ -766,6 +780,9 @@ var Events = {
 		if($('#wanderer').data('hp') <= 0) {
 			Events.clearTimeouts();
 			Events.endEvent();
+			if (window.ExtensionAPI) {
+				ExtensionAPI.hooks.emit('combat:playerDeath', {});
+			}
 			World.die();
 			return true;
 		}
@@ -782,6 +799,9 @@ var Events = {
 		Events.fought = true;
 		Events.clearTimeouts();
 		Events.removePause($('#pause'), 'end');
+		if (window.ExtensionAPI) {
+			ExtensionAPI.hooks.emit('combat:end', { won: Events.won });
+		}
 	},
 
 	winFight: function() {

@@ -258,6 +258,9 @@
       if (window.ExtensionLoader) {
         ExtensionLoader.loadFromManifest('extensions.json', function() {
           if (window.ExtensionAPI) {
+            // Signal that the engine has fully initialised (all core systems
+            // ready, extensions loaded) but before save-compat work runs.
+            ExtensionAPI.hooks.emit('game:init', {});
             // Warn about extensions that were recorded in the save but are
             // no longer loaded.  Orphaned state is preserved automatically.
             ExtensionAPI.save.validateCompatibility();
@@ -270,8 +273,10 @@
           }
         });
       } else if (window.ExtensionAPI) {
-        // Defensive fallback: emit game:start if ExtensionLoader was not loaded
-        // (e.g. custom build that omits loader.js but keeps api.js).
+        // Defensive fallback: emit game:init / game:start if ExtensionLoader
+        // was not loaded (e.g. custom build that omits loader.js but keeps
+        // api.js).
+        ExtensionAPI.hooks.emit('game:init', {});
         ExtensionAPI.hooks.emit('game:start', {});
       }
 
@@ -302,6 +307,9 @@
           Engine._lastNotify = Date.now();
         }
         localStorage.gameState = JSON.stringify(State);
+        if (window.ExtensionAPI) {
+          ExtensionAPI.hooks.emit('game:save', {});
+        }
       }
     },
 
@@ -312,11 +320,17 @@
           State = savedState;
           $SM.updateOldState();
           Engine.log("loaded save!");
+          if (window.ExtensionAPI) {
+            ExtensionAPI.hooks.emit('game:load', { isNewGame: false });
+          }
         }
       } catch(e) {
         State = {};
         $SM.set('version', Engine.VERSION);
         Engine.event('progress', 'new game');
+        if (window.ExtensionAPI) {
+          ExtensionAPI.hooks.emit('game:load', { isNewGame: true });
+        }
       }
     },
 
@@ -820,7 +834,12 @@
     },
 
     handleStateUpdates: function(e){
-
+      if (window.ExtensionAPI && e.category === 'stores') {
+        ExtensionAPI.hooks.emit('resource:changed', {
+          path: e.stateName,
+          value: $SM.get(e.stateName, true)
+        });
+      }
     },
 
     switchLanguage: function(dom){

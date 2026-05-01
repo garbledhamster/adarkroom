@@ -203,6 +203,12 @@ var World = {
 
   clearDungeon: function() {
     Engine.event('progress', 'dungeon cleared');
+    if (window.ExtensionAPI) {
+      ExtensionAPI.hooks.emit('world:landmarkCleared', {
+        tile: World.state.map[World.curPos[0]][World.curPos[1]],
+        position: [World.curPos[0], World.curPos[1]]
+      });
+    }
     World.state.map[World.curPos[0]][World.curPos[1]] = World.TILE.OUTPOST;
     World.drawRoad();
   },
@@ -373,6 +379,12 @@ var World = {
 
   move: function(direction) {
     var oldTile = World.state.map[World.curPos[0]][World.curPos[1]];
+    if (window.ExtensionAPI) {
+      ExtensionAPI.hooks.emit('world:beforeMove', {
+        direction: direction,
+        from: [World.curPos[0], World.curPos[1]]
+      });
+    }
     World.curPos[0] += direction[0];
     World.curPos[1] += direction[1];
     World.narrateMove(oldTile, World.state.map[World.curPos[0]][World.curPos[1]]);
@@ -388,6 +400,11 @@ var World = {
       ExtensionAPI.hooks.emit('path:step', {
         tile: World.state.map[World.curPos[0]][World.curPos[1]],
         position: [World.curPos[0], World.curPos[1]]
+      });
+      ExtensionAPI.hooks.emit('world:afterMove', {
+        tile: World.state.map[World.curPos[0]][World.curPos[1]],
+        position: [World.curPos[0], World.curPos[1]],
+        direction: direction
       });
     }
 
@@ -578,11 +595,23 @@ var World = {
     if(curTile == World.TILE.VILLAGE) {
       World.goHome();
     } else if(curTile === World.TILE.EXECUTIONER) {
+      if (window.ExtensionAPI) {
+        ExtensionAPI.hooks.emit('world:landmarkEntered', {
+          tile: curTile,
+          landmark: World.LANDMARKS[curTile] || null
+        });
+      }
       const scene = World.state.executioner ? 'executioner-antechamber' : 'executioner-intro';
       const sceneData = Events.Executioner[scene];
       Events.startEvent(sceneData);
     } else if(typeof World.LANDMARKS[curTile] != 'undefined') {
       if(curTile != World.TILE.OUTPOST || !World.outpostUsed()) {
+        if (window.ExtensionAPI) {
+          ExtensionAPI.hooks.emit('world:landmarkEntered', {
+            tile: curTile,
+            landmark: World.LANDMARKS[curTile]
+          });
+        }
         Events.startEvent(Events.Setpieces[World.LANDMARKS[curTile].scene]);
       }
     } else {
@@ -972,6 +1001,9 @@ var World = {
     if(World.state.ship && !$SM.get('features.location.spaceShip')) {
       Ship.init();
       Engine.event('progress', 'ship');
+      if (window.ExtensionAPI) {
+        ExtensionAPI.hooks.emit('ship:discovered', {});
+      }
     }
     if (World.state.executioner && !$SM.get('features.location.fabricator')) {
       Fabricator.init();
@@ -986,6 +1018,10 @@ var World = {
     }
 
     World.returnOutfit();
+
+    if (window.ExtensionAPI) {
+      ExtensionAPI.hooks.emit('path:returnHome', {});
+    }
 
     $('#outerSlider').animate({left: '0px'}, 300);
     Engine.activeModule = Path;
