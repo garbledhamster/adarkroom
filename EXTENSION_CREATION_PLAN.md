@@ -22,12 +22,12 @@ Copilot/Codex agents should update this file after every implementation pass by 
 
 ## Definition of Done for Extension System v1
 
-- [ ] Addons load from `extensions.json`.
-- [ ] Addons can be enabled/disabled without editing core game files.
-- [ ] Addons can register craftables, workers, events, weapons, perks, world tiles, and landmarks.
+- [x] Addons load from `extensions.json`.
+- [x] Addons can be enabled/disabled without editing core game files.
+- [x] Addons can register craftables, workers, events, weapons, perks, world tiles, and landmarks.
 - [ ] Hooks exist for movement, crafting/building, combat, resources, landmarks, game start/load/save.
-- [ ] Save files record enabled addon IDs and versions.
-- [ ] Missing addons do not corrupt saves.
+- [x] Save files record enabled addon IDs and versions.
+- [x] Missing addons do not corrupt saves.
 - [ ] Alchemist extension works end-to-end.
 - [ ] Herbalist extension works end-to-end.
 - [x] Diagnostics are available from the browser console.
@@ -325,32 +325,52 @@ Do not rewrite the whole save system. Use the existing State Manager patterns.
 
 ## Checklist
 
-- [ ] Save enabled extension IDs under `game.extensions.enabled` or equivalent stable path.
-- [ ] Save enabled extension versions.
-- [ ] Add `ExtensionAPI.save.getMetadata()`.
-- [ ] Add `ExtensionAPI.save.recordLoadedExtensions()`.
-- [ ] Add `ExtensionAPI.save.validateCompatibility()`.
-- [ ] Detect save-referenced extensions that are not currently loaded.
-- [ ] Preserve unknown extension-created stores.
-- [ ] Preserve unknown extension-created perks.
-- [ ] Preserve unknown extension-created map data.
-- [ ] Preserve unknown extension-created state.
-- [ ] Warn when save references missing extension.
-- [ ] Missing extensions do not corrupt saves.
-- [ ] Add optional migration support.
-- [ ] Track applied migrations under `game.extensions.migrations` or equivalent.
-- [ ] Add diagnostics for missing extensions.
-- [ ] Add diagnostics for migration state.
-- [ ] Add manual test notes.
-- [ ] Update this plan with pass notes.
+- [x] Save enabled extension IDs under `game.extensions.enabled` or equivalent stable path.
+- [x] Save enabled extension versions.
+- [x] Add `ExtensionAPI.save.getMetadata()`.
+- [x] Add `ExtensionAPI.save.recordLoadedExtensions()`.
+- [x] Add `ExtensionAPI.save.validateCompatibility()`.
+- [x] Detect save-referenced extensions that are not currently loaded.
+- [x] Preserve unknown extension-created stores.
+- [x] Preserve unknown extension-created perks.
+- [x] Preserve unknown extension-created map data.
+- [x] Preserve unknown extension-created state.
+- [x] Warn when save references missing extension.
+- [x] Missing extensions do not corrupt saves.
+- [x] Add optional migration support.
+- [x] Track applied migrations under `game.extensions.migrations` or equivalent.
+- [x] Add diagnostics for missing extensions.
+- [x] Add diagnostics for migration state.
+- [x] Add manual test notes.
+- [x] Update this plan with pass notes.
 
 ## Pass 4 Notes
 
-- Status: Not started
+- Status: Complete
 - Files changed:
+  - script/extensions/api.js  (added `save` namespace; updated `diagnostics.getSummary()`)
+  - script/engine.js          (wired `validateCompatibility`, `runMigrations`, `recordLoadedExtensions` into callback)
+  - docs/EXTENSIONS.md        (Save Compatibility section rewritten; Diagnostics updated)
+  - EXTENSION_CREATION_PLAN.md
 - Manual tests:
+  - Serve via `python3 -m http.server` and load the game.
+  - Run `ExtensionAPI.diagnostics.print()` — expect `savedExtensions` to contain `[{id:'alchemist',…},{id:'herbalist',…}]`.
+  - Reload the page — confirm no warnings about missing extensions (both still loaded).
+  - Disable `herbalist` in `extensions.json` (`"enabled": false`), reload — confirm console warning:
+    `[ExtensionAPI] save references extension "herbalist" v1.0.0 which is not currently loaded — orphaned state preserved`
+  - Re-enable herbalist, reload — no warnings, herbalist state preserved.
+  - Add a migration to a test extension (`migrations: [{id:'test:1.0:init', up: function(){}}]`):
+    confirm the migration runs once and is recorded in `game.extensions.migrations`.
+  - Save and reload — confirm the migration is NOT run again.
+  - Run `ExtensionAPI.save.getMetadata()` — confirm `enabled` and `migrations` fields are populated.
+  - Run `ExtensionAPI.save.validateCompatibility()` — confirm it returns `{ missing: [] }` when all extensions load.
 - Known risks:
+  - `validateCompatibility()` is called before `game:start` so it fires on every load, including new
+    games (where `game.extensions.enabled` is empty).  The empty-array guard ensures this is a no-op.
+  - Migration `up()` errors are caught and logged; a failed migration is NOT recorded as applied, so
+    it will be retried on the next load.
 - Blocked / Needs Review:
+  - `combat:kill` hook runtime validation still pending (carried from Passes 1–3).
 
 ---
 

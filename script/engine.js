@@ -258,6 +258,14 @@
       if (window.ExtensionLoader) {
         ExtensionLoader.loadFromManifest('extensions.json', function() {
           if (window.ExtensionAPI) {
+            // Warn about extensions that were recorded in the save but are
+            // no longer loaded.  Orphaned state is preserved automatically.
+            ExtensionAPI.save.validateCompatibility();
+            // Apply any pending data migrations declared by loaded extensions.
+            ExtensionAPI.save.runMigrations();
+            // Record the current set of loaded extensions into the save so
+            // future loads can detect missing addons.
+            ExtensionAPI.save.recordLoadedExtensions();
             ExtensionAPI.hooks.emit('game:start', {});
           }
         });
